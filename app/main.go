@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
+	"slices"
 	"unicode/utf8"
 )
 
@@ -39,8 +41,20 @@ func main() {
 	// default exit code is 0 which means success
 }
 
+func isValidPattern(pattern string) bool {
+	allowedPatterns := []string{
+		"\\d", // digit
+	}
+
+	if utf8.RuneCountInString(pattern) == 1 || slices.Contains(allowedPatterns, pattern) {
+		return true
+	}
+
+	return false
+}
+
 func matchLine(line []byte, pattern string) (bool, error) {
-	if utf8.RuneCountInString(pattern) != 1 {
+	if !isValidPattern(pattern) {
 		return false, fmt.Errorf("unsupported pattern: %q", pattern)
 	}
 
@@ -50,7 +64,17 @@ func matchLine(line []byte, pattern string) (bool, error) {
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 
 	// Uncomment this to pass the first stage
-	ok = bytes.ContainsAny(line, pattern)
+	if utf8.RuneCountInString(pattern) == 1 {
+		// If the pattern is a single character, we can use bytes.Contains
+		ok = bytes.Contains(line, []byte(pattern))
+		return ok, nil
+	}
+
+	if pattern == "\\d" {
+		match, err := regexp.MatchString(`\d`, string(line))
+
+		return match, err
+	}
 
 	return ok, nil
 }
